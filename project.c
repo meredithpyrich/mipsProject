@@ -12,7 +12,8 @@ void ALU(unsigned A,unsigned B,char ALUControl,unsigned *ALUresult,char *Zero)
 /* 10 Points */
 int instruction_fetch(unsigned PC,unsigned *Mem,unsigned *instruction)
 {
-
+    instruction = Mem[PC];
+    return 0;
 }
 
 
@@ -20,9 +21,42 @@ int instruction_fetch(unsigned PC,unsigned *Mem,unsigned *instruction)
 /* 10 Points */
 void instruction_partition(unsigned instruction, unsigned *op, unsigned *r1,unsigned *r2, unsigned *r3, unsigned *funct, unsigned *offset, unsigned *jsec)
 {
+    // A copy of the 32-bit instruction to manipulate with shifting.
+    unsigned instructionCopy = instruction;
 
+    instructionCopy >> 26;
+    op = instructionCopy;
+
+    instructionCopy = instruction;
+    instructionCopy = instructionCopy << 6;
+    instructionCopy = instructionCopy >> 27;
+    r1 = instructionCopy;
+
+    instructionCopy = instruction;
+    instructionCopy = instructionCopy << 11;
+    instructionCopy = instructionCopy >> 27;
+    r2 = instructionCopy;
+
+    instructionCopy = instruction;
+    instructionCopy = instructionCopy << 16;
+    instructionCopy = instructionCopy >> 27;
+    r3 = instructionCopy;
+
+    instructionCopy = instruction;
+    instructionCopy = instructionCopy << 26;
+    instructionCopy = instructionCopy >> 26;
+    funct = instructionCopy;
+
+    instructionCopy = instruction;
+    instructionCopy = instructionCopy << 16;
+    instructionCopy = instructionCopy >> 16;
+    offset = instructionCopy;
+
+    instructionCopy = instruction;
+    instructionCopy = instructionCopy << 6;
+    instructionCopy = instructionCopy >> 6;
+    jsec = instructionCopy;
 }
-
 
 
 /* instruction decode */
@@ -30,6 +64,7 @@ void instruction_partition(unsigned instruction, unsigned *op, unsigned *r1,unsi
 int instruction_decode(unsigned op,struct_controls *controls)
 {
 
+    return 0;
 }
 
 /* Read Register */
