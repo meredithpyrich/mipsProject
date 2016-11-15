@@ -7,6 +7,7 @@
 #include "spimcore.h"
 #include "limits.h"
 
+//Data structure for Words in each register
 typedef struct Word {
 	//Dynamically allocated array to hold the digits (registers)
 	//of an, stored in reverse order
@@ -15,6 +16,7 @@ typedef struct Word {
 	//(which is approximately equal to the length of the array)
 	int numRegisters;
 } Word;
+
 
 /* Auxillary functions to deal with each A and B 
    as 32-bit word registers */
@@ -33,6 +35,7 @@ Word *hugeAdd(Word *firstWord, Word *secondWord);
 unsigned wordToInt(Word *savedWord);
 //Negate an integer
 int NOT(unsigned B);
+
 
 //Gets the number of elements in a Word
 int getLength(int n) {
@@ -531,14 +534,77 @@ void sign_extend(unsigned offset,unsigned *extended_value)
 
     else
         *extended_value = val >> 16;
-
+    printf("extended value = %u\n", *extended_value);
 }
 
 /* ALU operations */
 /* Author: Zach Muller */
 /* 10 Points */
 int ALU_operations(unsigned data1,unsigned data2,unsigned extended_value,unsigned funct,char ALUOp,char ALUSrc,unsigned *ALUresult,char *Zero)
-{
+{	
+	/* check for HALT condition */
+	//An illegal instruction appears
+	if((ALUOp != '0') && (funct != 0)) {
+		return 1;
+	}
+
+	printf("ALUOp = %c\n", ALUOp);
+	/* If opcode is 000000, then we have an R-type */
+	if(ALUOp == '0') {
+		switch(funct) {
+			//add
+			case 32:
+				ALUOp = '0';
+				break;
+			//subtract
+			case 34:
+				ALUOp = '1';
+				break;
+			//slt signed
+			case 42:
+				ALUOp = '2';
+				break;
+			//slt unsigned
+			case 43:
+				ALUOp = '3';
+				break;
+			//AND
+			case 36:
+				ALUOp = '4';
+				break;
+			//OR
+			case 37:
+				ALUOp = '5';
+				break;
+			//Shift left B by 16
+			case 0:
+				ALUOp = '6';
+				break;
+			//NOT
+			case 39:
+				ALUOp = '7';
+				break;
+		}
+	}
+	
+	/* use data 2 or extended_value? (determined by ALU source control signal) */
+	if(ALUSrc == '1') {
+		ALU(data1,extended_value,ALUOp,ALUresult,Zero);
+	}
+	else {
+		ALU(data1,data2,ALUOp,ALUresult,Zero);	
+	}
+
+	/* check for HALT condition */
+	//Address is not word-alligned
+	if(*ALUresult % 4 != 0) {
+		return 1;
+	}
+	//Accessing data that is beyond memory
+	else if(ALUresult == NULL) {
+		return 1;
+	}
+
 	return 0;
 }
 
