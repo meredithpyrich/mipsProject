@@ -629,6 +629,18 @@ void write_register(unsigned r2,unsigned r3,unsigned memdata,unsigned ALUresult,
 /* Author: Zach Muller */
 /* 10 Points */
 void PC_update(unsigned jsec,unsigned extended_value,char Branch,char Jump,char Zero,unsigned *PC)
-{
-
+{	
+	/* If instruction is a branch, calculate target address */
+	//Is extended value the offset???
+	if(Branch == '1') {
+		*PC = (*PC + 4) + (4 * extended_value);
+	}
+	else if(Jump == '1') {
+		//Jump to instruction at address
+		*PC = &jsec;
+	}
+	/* PC+4 */
+	else {
+		*PC += 4;
+	}
 }
