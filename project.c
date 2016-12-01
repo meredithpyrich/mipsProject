@@ -7,6 +7,7 @@
 #include "spimcore.h"
 #include "limits.h"
 
+//Data structure for Words in each register
 typedef struct Word {
 	//Dynamically allocated array to hold the digits (registers)
 	//of an, stored in reverse order
@@ -15,6 +16,7 @@ typedef struct Word {
 	//(which is approximately equal to the length of the array)
 	int numRegisters;
 } Word;
+
 
 /* Auxillary functions to deal with each A and B 
    as 32-bit word registers */
@@ -33,6 +35,7 @@ Word *hugeAdd(Word *firstWord, Word *secondWord);
 unsigned wordToInt(Word *savedWord);
 //Negate an integer
 int NOT(unsigned B);
+
 
 //Gets the number of elements in a Word
 int getLength(int n) {
@@ -349,12 +352,15 @@ void ALU(unsigned A,unsigned B,char ALUControl,unsigned *ALUresult,char *Zero)
 			$s0 = hugeAdd($t0, $t1);
 
 			*ALUresult = wordToInt($s0);
-			printf("ALUresult = %u\n", *ALUresult);
+			//printf("ALUresult = %u\n", *ALUresult);
 			break;
 		}
 		//Subtract
 		case '1':
-		{
+		{	
+			/* CONFUSION: dealing with signed values when inputs 
+			and output are unsigned (need to fix later) */
+
 			//Create space for all words involved in add operation
 			//Source 1
 			Word *$t0 = (Word *)malloc(sizeof(Word));
@@ -369,38 +375,56 @@ void ALU(unsigned A,unsigned B,char ALUControl,unsigned *ALUresult,char *Zero)
 			$s0 = hugeAdd($t0, $t1);
 
 			*ALUresult = wordToInt($s0);
-			printf("ALU result = %u\n", *ALUresult);
+			//printf("ALU result = %u\n", *ALUresult);
 
 			break;
 		}
+		//SLT signed
 		case '2':
 		{
-			//slt
+			*ALUresult = 0;
+			if(A < B) {
+				*ALUresult = 1;
+			}
+			//printf("ALU result = %u\n", *ALUresult);
 			break;
 		}
+		//SLT unsigned
 		case '3':
 		{
-			//slt unsigned
+			*ALUresult = 0;
+			if(A < B) {
+				*ALUresult = 1;
+			}
+			//printf("ALU result = %u\n", *ALUresult);
 			break;
 		}
+		//AND
 		case '4':
-		{
-			//AND
+		{	
+			*ALUresult = A & B;
+			//printf("ALUresult = %u\n", *ALUresult);
 			break;
 		}
+		//OR
 		case '5':
-		{
-			//OR
+		{	
+			*ALUresult = A | B;
+			//printf("ALUresult = %u\n", *ALUresult);
 			break;
 		}
+		//shift LEFT B by 16 bits
 		case '6':
-		{
-			//shift left B by 16 bits
+		{	
+			*ALUresult = B << 16;
+			//printf("ALUresult = %u\n", *ALUresult);
 			break;
 		}
+		//NOT A
 		case '7':
-		{
-			//NOT A
+		{	
+			*ALUresult = ~A;
+			//printf("ALUresult = %u\n", *ALUresult);
 			break;
 		}
 	}
@@ -408,9 +432,10 @@ void ALU(unsigned A,unsigned B,char ALUControl,unsigned *ALUresult,char *Zero)
 	/* If result is 0, Zero = 1,
 	Otherwise Zero = 0 */
 	*Zero = '0';
-	if(ALUresult == 0) {
+	if(*ALUresult == 0) {
 		*Zero = '1';
 	}
+	//printf("Zero = %c\n", *Zero);
 }
 
 /* instruction fetch */
@@ -418,7 +443,15 @@ void ALU(unsigned A,unsigned B,char ALUControl,unsigned *ALUresult,char *Zero)
 /* 10 Points */
 int instruction_fetch(unsigned PC,unsigned *Mem,unsigned *instruction)
 {
-	return 0;
+	// If the address is not word aligned or if it is trying
+    // to access an address beyond the memory, halt.
+    if (PC % 4 != 0 || (PC >> 2) >= sizeof(Mem))
+        return 1;
+    /* ADDED & TO MEM[PC >> 2]*/
+    instruction = &Mem[PC >> 2];
+
+    // Return zero, for there was no halt.
+    return 0;
 }
 
 
@@ -427,7 +460,43 @@ int instruction_fetch(unsigned PC,unsigned *Mem,unsigned *instruction)
 /* 10 Points */
 void instruction_partition(unsigned instruction, unsigned *op, unsigned *r1,unsigned *r2, unsigned *r3, unsigned *funct, unsigned *offset, unsigned *jsec)
 {
+	// A copy of the 32-bit instruction to manipulate with shifting.
+    unsigned instructionCopy = instruction;
 
+    /* The following line threw an error saying result unused
+    So I assigned the result to itself */
+    instructionCopy = instructionCopy >> 26;
+    op = &instructionCopy;
+
+    instructionCopy = instruction;
+    instructionCopy = instructionCopy << 6;
+    instructionCopy = instructionCopy >> 27;
+    r1 = &instructionCopy;
+
+    instructionCopy = instruction;
+    instructionCopy = instructionCopy << 11;
+    instructionCopy = instructionCopy >> 27;
+    r2 = &instructionCopy;
+
+    instructionCopy = instruction;
+    instructionCopy = instructionCopy << 16;
+    instructionCopy = instructionCopy >> 27;
+    r3 = &instructionCopy;
+
+    instructionCopy = instruction;
+    instructionCopy = instructionCopy << 26;
+    instructionCopy = instructionCopy >> 26;
+    funct = &instructionCopy;
+
+    instructionCopy = instruction;
+    instructionCopy = instructionCopy << 16;
+    instructionCopy = instructionCopy >> 16;
+    offset = &instructionCopy;
+
+    instructionCopy = instruction;
+    instructionCopy = instructionCopy << 6;
+    instructionCopy = instructionCopy >> 6;
+    jsec = &instructionCopy;
 }
 
 
@@ -436,8 +505,77 @@ void instruction_partition(unsigned instruction, unsigned *op, unsigned *r1,unsi
 /* Author: Meredith Pyrich */
 /* 15 Points */
 int instruction_decode(unsigned op,struct_controls *controls)
-{
-	return 0;
+{	
+	/* CHANGED ALL CONTROLS.SOMETHING TO CONTROLS->SOMETHING */
+	// Pulled the opcodes and their cooresponding values from the ppt
+
+    // Set everything to 0 to default.
+    controls->RegDst = '0';
+    controls->Jump = '0';
+    controls->ALUSrc = '0';
+    controls->MemtoReg = '0';
+    controls->RegWrite = '0';
+    controls->MemRead = '0';
+    controls->MemWrite = '0';
+    controls->Branch = '0';
+    controls->ALUOp = '0';
+
+    // R-format
+    if (op == 0)
+    {
+        controls->RegDst = '1';
+        controls->ALUSrc = '0';
+        controls->MemtoReg = '0';
+        controls->RegWrite = '1';
+        controls->MemRead = '0';
+        controls->MemWrite = '0';
+        controls->Branch = '0';
+        controls->ALUOp = '2';
+    }
+    // lw
+    else if (op == 35)
+    {
+        controls->RegDst = '0';
+        controls->ALUSrc = '1';
+        controls->MemtoReg = '1';
+        controls->RegWrite = '1';
+        controls->MemRead = '1';
+        controls->MemWrite = '0';
+        controls->Branch = '0';
+        controls->ALUOp = '0';
+    }
+    // sw
+    else if (op == 43)
+    {
+        controls->RegDst = '2';
+        controls->ALUSrc = '1';
+        controls->MemtoReg = '2';
+        controls->RegWrite = '0';
+        controls->MemRead = '0';
+        controls->MemWrite = '1';
+        controls->Branch = '0';
+        controls->ALUOp = '0';
+    }
+    // beq
+    else if (op == 4)
+    {
+        controls->RegDst = '2';
+        controls->ALUSrc = '0';
+        controls->MemtoReg = '2';
+        controls->RegWrite = '0';
+        controls->MemRead = '0';
+        controls->MemWrite = '0';
+        controls->Branch = '1';
+        controls->ALUOp = '1';
+    }
+    else
+    {
+        // Opcode doesn't equal any of the values here.
+        // Illegal instruction error, halt.
+        return 1;
+    }
+
+    return 0;
 }
 
 /* Read Register */
@@ -445,7 +583,8 @@ int instruction_decode(unsigned op,struct_controls *controls)
 /* 5 Points */
 void read_register(unsigned r1,unsigned r2,unsigned *Reg,unsigned *data1,unsigned *data2)
 {
-
+	*data1 = Reg[r1];
+    *data2 = Reg[r2];
 }
 
 
@@ -454,14 +593,93 @@ void read_register(unsigned r1,unsigned r2,unsigned *Reg,unsigned *data1,unsigne
 /* 10 Points */
 void sign_extend(unsigned offset,unsigned *extended_value)
 {
+	int val = offset;
+    int sign = 0;
 
+    if((val >> 15) == 1)
+    {
+        sign = 1;
+    }
+
+    if(sign == 1)
+    {
+        val = val >> 16;
+        *extended_value = val | 0xffff0000;
+    }
+
+    else
+        *extended_value = val >> 16;
+    //printf("extended value = %u\n", *extended_value);
 }
 
 /* ALU operations */
 /* Author: Zach Muller */
 /* 10 Points */
 int ALU_operations(unsigned data1,unsigned data2,unsigned extended_value,unsigned funct,char ALUOp,char ALUSrc,unsigned *ALUresult,char *Zero)
-{
+{	
+	/* check for HALT condition */
+	//An illegal instruction appears
+	if((ALUOp != '0') && (funct != 0)) {
+		return 1;
+	}
+
+	//printf("ALUOp = %c\n", ALUOp);
+	/* If opcode is 000000, then we have an R-type */
+	if(ALUOp == '0') {
+		switch(funct) {
+			//add
+			case 32:
+				ALUOp = '0';
+				break;
+			//subtract
+			case 34:
+				ALUOp = '1';
+				break;
+			//slt signed
+			case 42:
+				ALUOp = '2';
+				break;
+			//slt unsigned
+			case 43:
+				ALUOp = '3';
+				break;
+			//AND
+			case 36:
+				ALUOp = '4';
+				break;
+			//OR
+			case 37:
+				ALUOp = '5';
+				break;
+			//Shift left B by 16
+			case 0:
+				ALUOp = '6';
+				break;
+			//NOT
+			case 39:
+				ALUOp = '7';
+				break;
+		}
+	}
+	
+	/* use data 2 or extended_value? (determined by ALU source control signal) */
+	if(ALUSrc == '1') {
+		ALU(data1,extended_value,ALUOp,ALUresult,Zero);
+	}
+	else {
+		ALU(data1,data2,ALUOp,ALUresult,Zero);	
+	}
+
+	/* check for HALT condition */
+	//Address is not word-alligned
+	if(*ALUresult % 4 != 0) {
+		return 1;
+	}
+	//Accessing data that is beyond memory
+	else if(ALUresult == NULL) {
+		return 1;
+	}
+
 	return 0;
 }
 
@@ -469,7 +687,18 @@ int ALU_operations(unsigned data1,unsigned data2,unsigned extended_value,unsigne
 /* Author: Danielle Evans */
 /* 10 Points */
 int rw_memory(unsigned ALUresult,unsigned data2,char MemWrite,char MemRead,unsigned *memdata,unsigned *Mem)
-{
+{	
+	/* Most false positives for halting */
+	 if(MemRead == '1')
+    {
+        *memdata = Mem[ALUresult];
+    }
+
+    if(MemWrite == '1')
+    {
+        Mem[ALUresult] = data2;
+    }
+
 	return 0;
 }
 
@@ -479,13 +708,46 @@ int rw_memory(unsigned ALUresult,unsigned data2,char MemWrite,char MemRead,unsig
 /* 10 Points */
 void write_register(unsigned r2,unsigned r3,unsigned memdata,unsigned ALUresult,char RegWrite,char RegDst,char MemtoReg,unsigned *Reg)
 {
+	if(RegWrite == '1' && MemtoReg == '1' && RegDst == '0')
+    {
+        Reg[r2] = memdata;
 
+    }
+    else if(RegWrite == '1' && MemtoReg == '1' && RegDst == '1')
+    {
+        Reg[r3] = memdata;
+
+    }
+    else if(RegWrite == '1' && MemtoReg == '0' && RegDst == '0')
+    {
+        Reg[r2] = ALUresult;
+
+    }
+    else if(RegWrite == '1' && MemtoReg == '0' && RegDst == '1')
+    {
+        Reg[r3] = ALUresult;
+
+    }
 }
 
 /* PC update */
 /* Author: Zach Muller */
 /* 10 Points */
 void PC_update(unsigned jsec,unsigned extended_value,char Branch,char Jump,char Zero,unsigned *PC)
-{
-
+{	
+	/* If instruction is a branch, calculate target address */
+	//Is extended value the offset???
+	//Use ZERO
+	if(Branch == '1' && Zero == '1') {
+		*PC = (*PC + 4) + (4 * extended_value);
+	}
+	else if(Jump == '1') {
+		/* REMOVED & FROM jsec */
+		//Jump to instruction at address
+		*PC = jsec;
+	}
+	/* PC+4 */
+	else {
+		*PC += 4;
+	}
 }
