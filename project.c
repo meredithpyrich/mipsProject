@@ -7,6 +7,8 @@
 #include "spimcore.h"
 #include "limits.h"
 
+#define MEMSIZE (65536 >> 2)
+
 //Data structure for Words in each register
 typedef struct Word {
 	//Dynamically allocated array to hold the digits (registers)
@@ -337,7 +339,7 @@ void ALU(unsigned A,unsigned B,char ALUControl,unsigned *ALUresult,char *Zero)
 	switch(ALUControl) {
 		//Add
 		case '0':
-		{
+		{	
 			//Create space for all words involved in add operation
 			//Source 1
 			Word *$t0 = (Word *)malloc(sizeof(Word));
@@ -352,7 +354,7 @@ void ALU(unsigned A,unsigned B,char ALUControl,unsigned *ALUresult,char *Zero)
 			$s0 = hugeAdd($t0, $t1);
 
 			*ALUresult = wordToInt($s0);
-			//printf("ALUresult = %u\n", *ALUresult);
+			printf("ALUresult = %u\n", *ALUresult);
 			break;
 		}
 		//Subtract
@@ -438,6 +440,81 @@ void ALU(unsigned A,unsigned B,char ALUControl,unsigned *ALUresult,char *Zero)
 	//printf("Zero = %c\n", *Zero);
 }
 
+/* ALU operations */
+/* Author: Zach Muller */
+/* 10 Points */
+int ALU_operations(unsigned data1,unsigned data2,unsigned extended_value,unsigned funct,char ALUOp,char ALUSrc,unsigned *ALUresult,char *Zero)
+{	
+	/* check for HALT condition */
+	//An illegal instruction appears
+	if((ALUOp != '0') && (funct != 0)) {
+		printf("ALU Op Halted\n");
+		return 1;
+	}
+	//printf("funct = %u\n", funct);
+	//printf("ALUOp = %c\n", ALUOp);
+	/* If opcode is 000000, then we have an R-type */
+	if(ALUOp == '0') {
+		switch(funct) {
+			//add
+			case 32:
+				ALUOp = '0';
+				break;
+			//subtract
+			case 34:
+				ALUOp = '1';
+				break;
+			//slt signed
+			case 42:
+				ALUOp = '2';
+				break;
+			//slt unsigned
+			case 43:
+				ALUOp = '3';
+				break;
+			//AND
+			case 36:
+				ALUOp = '4';
+				break;
+			//OR
+			case 37:
+				ALUOp = '5';
+				break;
+			//Shift left B by 16
+			case 0:	
+				ALUOp = '6';
+				break;
+			//NOT
+			case 39:
+				ALUOp = '7';
+				break;
+		}
+	}
+	printf("ALUSrc = %c\n", ALUSrc);
+	/* use data 2 or extended_value? (determined by ALU source control signal) */
+	if(ALUSrc == '1') {
+		ALU(data1,extended_value,ALUOp,ALUresult,Zero);
+	}
+	else {
+		printf("here\n");
+		ALU(data1,data2,ALUOp,ALUresult,Zero);	
+	}
+
+	/* check for HALT condition */
+	//Address is not word-alligned
+	if(*ALUresult % 4 != 0) {
+		printf("ALU Op Halted\n");
+		return 1;
+	}
+	//Accessing data that is beyond memory
+	else if(ALUresult == NULL) {
+		printf("ALU Op Halted\n");
+		return 1;
+	}
+
+	return 0;
+}
+
 /* instruction fetch */
 /* Author: Meredith Pyrich */
 /* 10 Points */
@@ -445,8 +522,10 @@ int instruction_fetch(unsigned PC,unsigned *Mem,unsigned *instruction)
 {
 	// If the address is not word aligned or if it is trying
     // to access an address beyond the memory, halt.
-    if (PC % 4 != 0 || (PC >> 2) >= sizeof(Mem))
+    if (((PC % 4) != 0) || (PC  > (MEMSIZE << 2))) {
+    	printf("instructionFetch Halted\n");
         return 1;
+    }
     /* ADDED & TO MEM[PC >> 2]*/
     instruction = &Mem[PC >> 2];
 
@@ -508,7 +587,7 @@ int instruction_decode(unsigned op,struct_controls *controls)
 {	
 	/* CHANGED ALL CONTROLS.SOMETHING TO CONTROLS->SOMETHING */
 	// Pulled the opcodes and their cooresponding values from the ppt
-
+	printf("op = %u", op);
     // Set everything to 0 to default.
     controls->RegDst = '0';
     controls->Jump = '0';
@@ -533,7 +612,7 @@ int instruction_decode(unsigned op,struct_controls *controls)
         controls->ALUOp = '2';
     }
     // lw
-    else if (op == 35)
+    else if (op == 49)
     {
         controls->RegDst = '0';
         controls->ALUSrc = '1';
@@ -545,7 +624,7 @@ int instruction_decode(unsigned op,struct_controls *controls)
         controls->ALUOp = '0';
     }
     // sw
-    else if (op == 43)
+    else if (op == 53)
     {
         controls->RegDst = '2';
         controls->ALUSrc = '1';
@@ -557,7 +636,7 @@ int instruction_decode(unsigned op,struct_controls *controls)
         controls->ALUOp = '0';
     }
     // beq
-    else if (op == 4)
+    else if (op == 8)
     {
         controls->RegDst = '2';
         controls->ALUSrc = '0';
@@ -572,6 +651,7 @@ int instruction_decode(unsigned op,struct_controls *controls)
     {
         // Opcode doesn't equal any of the values here.
         // Illegal instruction error, halt.
+        printf("instructionDecode Halted\n");
         return 1;
     }
 
@@ -603,85 +683,16 @@ void sign_extend(unsigned offset,unsigned *extended_value)
 
     if(sign == 1)
     {
-        val = val >> 16;
         *extended_value = val | 0xffff0000;
     }
 
-    else
-        *extended_value = val >> 16;
+    else{
+        *extended_value = val | 0x00000000;
+    }
+
     //printf("extended value = %u\n", *extended_value);
 }
 
-/* ALU operations */
-/* Author: Zach Muller */
-/* 10 Points */
-int ALU_operations(unsigned data1,unsigned data2,unsigned extended_value,unsigned funct,char ALUOp,char ALUSrc,unsigned *ALUresult,char *Zero)
-{	
-	/* check for HALT condition */
-	//An illegal instruction appears
-	if((ALUOp != '0') && (funct != 0)) {
-		return 1;
-	}
-
-	//printf("ALUOp = %c\n", ALUOp);
-	/* If opcode is 000000, then we have an R-type */
-	if(ALUOp == '0') {
-		switch(funct) {
-			//add
-			case 32:
-				ALUOp = '0';
-				break;
-			//subtract
-			case 34:
-				ALUOp = '1';
-				break;
-			//slt signed
-			case 42:
-				ALUOp = '2';
-				break;
-			//slt unsigned
-			case 43:
-				ALUOp = '3';
-				break;
-			//AND
-			case 36:
-				ALUOp = '4';
-				break;
-			//OR
-			case 37:
-				ALUOp = '5';
-				break;
-			//Shift left B by 16
-			case 0:
-				ALUOp = '6';
-				break;
-			//NOT
-			case 39:
-				ALUOp = '7';
-				break;
-		}
-	}
-	
-	/* use data 2 or extended_value? (determined by ALU source control signal) */
-	if(ALUSrc == '1') {
-		ALU(data1,extended_value,ALUOp,ALUresult,Zero);
-	}
-	else {
-		ALU(data1,data2,ALUOp,ALUresult,Zero);	
-	}
-
-	/* check for HALT condition */
-	//Address is not word-alligned
-	if(*ALUresult % 4 != 0) {
-		return 1;
-	}
-	//Accessing data that is beyond memory
-	else if(ALUresult == NULL) {
-		return 1;
-	}
-
-	return 0;
-}
 
 /* Read / Write Memory */
 /* Author: Danielle Evans */
@@ -690,13 +701,29 @@ int rw_memory(unsigned ALUresult,unsigned data2,char MemWrite,char MemRead,unsig
 {	
 	/* Most false positives for halting */
 	 if(MemRead == '1')
-    {
-        *memdata = Mem[ALUresult];
+    {	
+    	//Make sure result is word-alligned
+    	if(ALUresult % 4 == 0) {
+        	*memdata = Mem[ALUresult >> 2];
+    	}
+    	else {
+	    	printf("rw_mem Halted\n");
+	    	//We have an improper address
+	    	return 1;
+	    }
     }
 
     if(MemWrite == '1')
-    {
-        Mem[ALUresult] = data2;
+    {	
+    	//Make sure result is word-alligned
+    	if(ALUresult % 4 == 0) {
+        	Mem[ALUresult >> 2] = data2;
+    	}
+    	else {
+	    	printf("rw_mem Halted\n");
+	    	//We have an improper address
+	    	return 1;
+	    }
     }
 
 	return 0;
