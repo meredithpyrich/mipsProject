@@ -355,41 +355,41 @@ void instruction_partition(unsigned instruction, unsigned *op, unsigned *r1,unsi
 {
 	// A copy of the 32-bit instruction to manipulate with shifting.
     unsigned instructionCopy = instruction;
-    //printf("instructionCopy = %u\n", instructionCopy);
-    /* The following line threw an error saying result unused
-    So I assigned the result to itself */
-    instructionCopy = instructionCopy >> 26;
-    op = &instructionCopy;
 
+    //printf("instructionCopy = %u\n", instructionCopy);
+
+    instructionCopy = instructionCopy >> 26;
+    *op = instructionCopy;
+    //printf("op = %u\n", *op);
     instructionCopy = instruction;
     instructionCopy = instructionCopy << 6;
     instructionCopy = instructionCopy >> 27;
-    r1 = &instructionCopy;
+    *r1 = instructionCopy;
     //printf("r1 = %u\n", *r1);
     instructionCopy = instruction;
     instructionCopy = instructionCopy << 11;
     instructionCopy = instructionCopy >> 27;
-    r2 = &instructionCopy;
+    *r2 = instructionCopy;
     //printf("r2 = %u\n", *r2);
     instructionCopy = instruction;
     instructionCopy = instructionCopy << 16;
     instructionCopy = instructionCopy >> 27;
-    r3 = &instructionCopy;
+    *r3 = instructionCopy;
     //printf("r3 = %u\n", *r3);
     instructionCopy = instruction;
     instructionCopy = instructionCopy << 26;
     instructionCopy = instructionCopy >> 26;
-    funct = &instructionCopy;
+    *funct = instructionCopy;
 
     instructionCopy = instruction;
     instructionCopy = instructionCopy << 16;
     instructionCopy = instructionCopy >> 16;
-    offset = &instructionCopy;
+    *offset = instructionCopy;
     //printf("offset = %u\n", *offset);
     instructionCopy = instruction;
     instructionCopy = instructionCopy << 6;
     instructionCopy = instructionCopy >> 6;
-    jsec = &instructionCopy;
+    *jsec = instructionCopy;
 }
 
 
@@ -400,8 +400,8 @@ void instruction_partition(unsigned instruction, unsigned *op, unsigned *r1,unsi
 int instruction_decode(unsigned op,struct_controls *controls)
 {	
 
-
-	/* ADDED THE EXTRA FUNCTION CONTROL SIGNALS*/
+	printf("op = %u\n", op);
+	/* ADDED THE EXTRA FUNCTION CONTROL SIGNALS */
 
 
 	/* RegDest		0 -> use r2						1 -> use r3 
@@ -447,7 +447,7 @@ int instruction_decode(unsigned op,struct_controls *controls)
     		controls->RegDst = '0';
     		controls->Jump = '1';
 	        controls->ALUSrc = '0';
-	        controls->MemtoReg = '0';
+	        controls->MemtoReg = '1';
 	        controls->RegWrite = '0';
 	        controls->MemRead = '0';
 	        controls->MemWrite = '0';
@@ -476,7 +476,7 @@ int instruction_decode(unsigned op,struct_controls *controls)
 	        controls->MemtoReg = '0';
 	        controls->RegWrite = '1';
 	        controls->MemRead = '0';
-	        controls->MemWrite = '0';
+	        controls->MemWrite = '1';
 	        controls->Branch = '0';
 	        controls->ALUOp = '0';
     		break;
@@ -486,7 +486,7 @@ int instruction_decode(unsigned op,struct_controls *controls)
     		controls->RegDst = '0';
     		controls->Jump = '0';
 	        controls->ALUSrc = '1';
-	        controls->MemtoReg = '0';
+	        controls->MemtoReg = '1';
 	        controls->RegWrite = '1';
 	        controls->MemRead = '0';
 	        controls->MemWrite = '0';
@@ -499,7 +499,7 @@ int instruction_decode(unsigned op,struct_controls *controls)
     		controls->RegDst = '0';
     		controls->Jump = '0';
 	        controls->ALUSrc = '1';
-	        controls->MemtoReg = '0';
+	        controls->MemtoReg = '1';
 	        controls->RegWrite = '1';
 	        controls->MemRead = '0';
 	        controls->MemWrite = '0';
@@ -512,7 +512,7 @@ int instruction_decode(unsigned op,struct_controls *controls)
     		controls->RegDst = '0';
     		controls->Jump = '0';
 	        controls->ALUSrc = '1';
-	        controls->MemtoReg = '0';
+	        controls->MemtoReg = '1';
 	        controls->RegWrite = '1';
 	        controls->MemRead = '0';
 	        controls->MemWrite = '0';
@@ -553,63 +553,7 @@ int instruction_decode(unsigned op,struct_controls *controls)
         printf("instructionDecode Halted\n");
         return 1;
     }
-    /*
-    // R-format
-    if (op == 0)
-    {
-        controls->RegDst = '1';
-        controls->ALUSrc = '0';
-        controls->MemtoReg = '0';
-        controls->RegWrite = '1';
-        controls->MemRead = '0';
-        controls->MemWrite = '0';
-        controls->Branch = '0';
-        controls->ALUOp = '1';
-    }
-    // lw
-    else if (op == 49)
-    {
-        controls->RegDst = '0';
-        controls->ALUSrc = '1';
-        controls->MemtoReg = '1';
-        controls->RegWrite = '1';
-        controls->MemRead = '1';
-        controls->MemWrite = '0';
-        controls->Branch = '0';
-        controls->ALUOp = '0';
-    }
-    // sw
-    else if (op == 53)
-    {
-        controls->RegDst = '2';
-        controls->ALUSrc = '1';
-        controls->MemtoReg = '2';
-        controls->RegWrite = '0';
-        controls->MemRead = '0';
-        controls->MemWrite = '1';
-        controls->Branch = '0';
-        controls->ALUOp = '0';
-    }
-    // beq
-    else if (op == 8)
-    {
-        controls->RegDst = '2';
-        controls->ALUSrc = '0';
-        controls->MemtoReg = '2';
-        controls->RegWrite = '0';
-        controls->MemRead = '0';
-        controls->MemWrite = '0';
-        controls->Branch = '1';
-        controls->ALUOp = '2';
-    }
-    else
-    {
-        // Opcode doesn't equal any of the values here.
-        // Illegal instruction error, halt.
-        printf("instructionDecode Halted\n");
-        return 1;
-    }
-	*/
+    
     return 0;
 }
 
@@ -628,7 +572,7 @@ void read_register(unsigned r1,unsigned r2,unsigned *Reg,unsigned *data1,unsigne
 /* 10 Points */
 void sign_extend(unsigned offset,unsigned *extended_value)
 {	
-	//printf("offset = %u\n", offset);
+	printf("offset = %u\n", offset);
 	int val = offset;
     int sign = 0;
    
@@ -654,54 +598,55 @@ void sign_extend(unsigned offset,unsigned *extended_value)
 /* 10 Points */
 int ALU_operations(unsigned data1,unsigned data2,unsigned extended_value,unsigned funct,char ALUOp,char ALUSrc,unsigned *ALUresult,char *Zero)
 {	
+	printf("funct = %u\n", funct);
+	printf("ALUOp = %c\n", ALUOp);
 	/* check for HALT condition */
 	//An illegal instruction appears
-	if((ALUOp != '0') && (funct != 0)) {
+	if((ALUOp != '0') && (ALUOp != '2') && (ALUOp != '3') && (ALUOp != '6') && (ALUOp != '7') && (ALUOp != '8')) {
 		printf("ALU Op Halted\n");
 		return 1;
 	}
-	printf("funct = %u\n", funct);
-	printf("ALUOp = %c\n", ALUOp);
 
 	//lw/sw
 	if(ALUOp == '0') {
 		//add
 		ALUOp = '0';
 	}
-	//R-type
-	else if(ALUOp == '1' || ALUOp == '2') {
+	//Branch
+	else if(ALUOp == '1') {
 		//subtract
 		ALUOp = '1';
 	}
-	else if(ALUOp == '3' || ALUOp == '4') {
+	//R-type
+	else {
 		switch(funct) {
 			//add
-			case 0:
+			case 32:
 				ALUOp = '0';
 				break;
 			 
 			//subtract
-			case 2:
+			case 34:
 				ALUOp = '1';
 				break;
 
 			//AND
-			case 4:
+			case 36:
 				ALUOp = '4';
 				break;
 
 			//OR
-			case 5:
+			case 37:
 				ALUOp = '5';
 				break;
 
 			//slt signed
-			case 10:
+			case 42:
 				ALUOp = '2';
 				break;
 
 			//slt unsigned
-			case 11:
+			case 43:
 				ALUOp = '3';
 				break;
 
@@ -721,24 +666,14 @@ int ALU_operations(unsigned data1,unsigned data2,unsigned extended_value,unsigne
 	/* use data 2 or extended_value? (determined by ALU source control signal) */
 	//Use extended value (immediate)
 	if(ALUSrc == '1') {
+		printf("data 1 = %u\ndata 2 = %u\n\n", data1, data2);
 		ALU(data1,extended_value,ALUOp,ALUresult,Zero);
+		printf("ALUresult = %u\n", *ALUresult);
 	}
 	//Use r2
 	else {
 		printf("data 1 = %u\ndata 2 = %u\n\n", data1, data2);
 		ALU(data1,data2,ALUOp,ALUresult,Zero);	
-	}
-
-	/* check for HALT condition */
-	//Address is not word-alligned
-	if(*ALUresult % 4 != 0) {
-		printf("ALU Op Halted\n");
-		return 1;
-	}
-	//Accessing data that is beyond memory
-	else if(ALUresult == NULL) {
-		printf("ALU Op Halted\n");
-		return 1;
 	}
 
 	return 0;
@@ -749,7 +684,6 @@ int ALU_operations(unsigned data1,unsigned data2,unsigned extended_value,unsigne
 /* 10 Points */
 void ALU(unsigned A,unsigned B,char ALUControl,unsigned *ALUresult,char *Zero)
 {	
-	ALUresult = (unsigned *)malloc(sizeof(unsigned));
 	printf("ALUControl = %c\n", ALUControl);
 	switch(ALUControl) {
 		//Add
@@ -797,7 +731,8 @@ void ALU(unsigned A,unsigned B,char ALUControl,unsigned *ALUresult,char *Zero)
 		}
 		//SLT signed
 		case '2':
-		{
+		{	
+			printf("SLT Signed\n");
 			*ALUresult = 0;
 			if((int)A < (int)B) {
 				*ALUresult = 1;
@@ -859,30 +794,47 @@ void ALU(unsigned A,unsigned B,char ALUControl,unsigned *ALUresult,char *Zero)
 /* 10 Points */
 int rw_memory(unsigned ALUresult,unsigned data2,char MemWrite,char MemRead,unsigned *memdata,unsigned *Mem)
 {	
+	unsigned *addressBefore = (unsigned *)malloc(sizeof(unsigned));
+	addressBefore = &ALUresult;
+	unsigned *address = (unsigned *)malloc(sizeof(unsigned));
+	
+
+	*address = (long)addressBefore % 4;
+	//printf("address = %lu\n", (long)address);
+	*address = (long)address * 4;
+	//printf("addressBefore = %p\n", &ALUresult);
+	//printf("addressBefore = %lu\n", (long)addressBefore);
+	//printf("address = %lu\n", (long)address);
+	//printf("MemRead = %c\nMemWrite = %c\n\n", MemRead, MemWrite);
+	
 	/* Most false positives for halting */
 	 if(MemRead == '1')
     {	
+    	*memdata = Mem[ALUresult >> 2];
+    	printf("Reading from memory...\n");
     	//Make sure result is word-alligned
-    	if(ALUresult % 4 == 0) {
+    	if(addressBefore == address) {
         	*memdata = Mem[ALUresult >> 2];
     	}
     	else {
 	    	printf("rw_mem Halted\n");
 	    	//We have an improper address
-	    	return 1;
+	    	//return 1;
 	    }
     }
 
     if(MemWrite == '1')
     {	
+    	Mem[ALUresult >> 2] = data2;
+    	printf("Writing to memory...\n");
     	//Make sure result is word-alligned
-    	if(ALUresult % 4 == 0) {
+    	if(*addressBefore == *address) {
         	Mem[ALUresult >> 2] = data2;
     	}
     	else {
 	    	printf("rw_mem Halted\n");
 	    	//We have an improper address
-	    	return 1;
+	    	//return 1;
 	    }
     }
 
@@ -906,12 +858,15 @@ void write_register(unsigned r2,unsigned r3,unsigned memdata,unsigned ALUresult,
 
     }
     else if(RegWrite == '1' && MemtoReg == '0' && RegDst == '0')
-    {
+    {	
+    	printf("r2 = %u\n", r2);
+    	printf("ALUresult = %u\n", ALUresult);
+    	printf("writing register...\n");
         Reg[r2] = ALUresult;
 
     }
     else if(RegWrite == '1' && MemtoReg == '0' && RegDst == '1')
-    {
+    {	
         Reg[r3] = ALUresult;
 
     }
